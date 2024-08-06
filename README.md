@@ -23,4 +23,12 @@ fi
 # API Delete Duplicate Macs.sh
 Pulls an advanced search of all Macs in two seperate Jamf servers. Compares matching serial numbers, checks for latest enrollment date and delete the old serial number.
 
-Homebrew is used to install xmlstarlet. Script checks for installation and fails if missing. But you do need xmlstarlet, I couldn't sort well enough without it. 
+Homebrew is needed to install xmlstarlet. Script checks for installation and fails if missing. But you do need xmlstarlet, I couldn't sort well enough without it. 
+
+
+# Jamf Upload Logs
+This script, in conjunction with secured API credentials, can be used in Jamf policy to pull a file or folder, or generate a log from a users Mac, then upload to Jamf.
+
+It uploads a ZIP of the log or path into File Attachments.
+
+I've used to to grab a user installed application so I coudld get the bundle ID or to pull a specific log from from a few Macs. 
