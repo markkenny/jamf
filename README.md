@@ -32,3 +32,12 @@ This script, in conjunction with secured API credentials, can be used in Jamf po
 It uploads a ZIP of the log or path into File Attachments.
 
 I've used to to grab a user installed application so I coudld get the bundle ID or to pull a specific log from from a few Macs. 
+
+
+# MAXON Installer
+At my company, we remove almost all users admin privileges, and this can be awkward for creatives needing to run updates. Adobe Creative Cloud has an option to run as priviled to allow users to install, update and remove applications, but MAXON doesn't. We have asked many times.
+
+They do offer a cli, but the [documentation is a little sparse](https://support.maxon.net/hc/en-us/articles/10140095856796-How-To-Use-The-mx1-Tool).
+
+My script runs in Terminal or as a Jamf policy. Still tweaking.
+
