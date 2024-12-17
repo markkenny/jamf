@@ -1,40 +1,47 @@
 #!/bin/bash
 
 # MK Jamf script to download and install MAXON apps using their own tool.
+# They should be doing this!
+# 2024 12 17 MAXON changed the app, only four apps now???
 
 ######### TO DO
-# Policy to install MAXON app if mx1 cli is missing. 
+# Policy to install MAXON app if mx1cli is missing. Check which Jamf is on and run IOM policy to install MAXON app
 # Check for host app and fail; Premiere/AfterEffect, DaVinci, Avid, Cinema4D etc.
-# Unmount/Detach any mounted volumes if non-admin user tried using app to install
+
 
 ######### Jamf Variables
 # Choose the app to install with a Jamf policy which overrides selectin in this script.
-# Options: "Magic Bullet" "Trapcode" "VFX" "PluralEyes" "Universe" "Cinema 4D" "zBrush" "RedShift"
+# Options: "Cinema 4D" "Red Giant" "RedShift" "zBrush"
 selection="${4:-""}" 
+#IOM Policy to install MAXON App. DSO: 6347 ROW: 9130
+#maxonApp="${5:-""}" 
+
 
 appSelect="${11:-"CLI"}" # Choose how to prompt user. Default is CLI. Or OSA if running from Jamf.
 
 ######### Variables
-version="20241104c"
+version="20241217a"
 mx1cli="/Library/Application Support/Maxon/Tools/mx1"
 currentUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
 DLfolder="/Users/Shared/Maxon/Service/Downloads"
 DEVid="4ZY22YGXQG"
 SECONDS=0
-LOG="/private/var/logs/MAXON-INSTALLER.log"
-appArray=("Magic Bullet" "Trapcode" "VFX" "PluralEyes" "Universe" "Cinema 4D" "zBrush" "RedShift")
+LOG="/private/var/omc/logs/MAXON-INSTALLER.log"
+
+appArray=( "Cinema 4D" "Red Giant" "RedShift" "zBrush" )
 
 
 ######### Functions
+
 # Making command a function so as to be able to not have to worry about escaped spaces.
 mx1cli() {
-    sudo -u $currentUser /Library/Application\ Support/Maxon/Tools/mx1 "$@"
+    sudo -u "$currentUser" /Library/Application\ Support/Maxon/Tools/mx1 "$@"
 }
 
 # Check log exists, user signed into MAXON app, clear any mounted DMGs from previous failed installs.
 sanityCheck() {
     if [[ ! -f "$LOG" ]]; then
-        sudo -u $currentUser touch $LOG || { echo "Failed to create log file."; exit 1; }
+        sudo -u "$currentUser" touch $LOG || { echo "Failed to create log file."; exit 1; }
         echo "#######################################################################" | tee -a $LOG
         echo "$(date +%Y%m%d-%H%M%S) STARTING OneJamf MAXON Installer v$version" | tee -a $LOG
     else 
@@ -72,9 +79,10 @@ sanityCheck() {
 # Cleanup
 clearDownloads() {
     if [[ "$(ls -A "$DLfolder")" ]]; then
-        rm -rf "$DLfolder"/*
+        rm -rf "${DLfolder:?}/"*
     fi
 }
+
 
 # Read bundle info for application info
 BundleInfo() {
@@ -102,6 +110,7 @@ BundleInfo() {
 
 }
 
+
 # Check Apple DEV ID matches. Only for apps from DMGs
 checkDevID() {
     if [[ "$bundle_appleID" = *$DEVid* ]]; then
@@ -114,50 +123,28 @@ checkDevID() {
 
 # All settings to insall each MAXON app. 
 appSettings() {
-	if [[ $selection == "Magic Bullet" ]]; then
-        downloader="com.redgiant.magicbullet-installer"
-        bundleID="com.redgiant.MagicBullet-Suite-Installer"
-        installCommand="/Contents/MacOS/Magic Bullet Suite Installer"
-        installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "Trapcode" ]]; then
-        echo "Selection ........: Trapcode" | tee -a $LOG
-        bundleID="com.redgiant.Trapcode-Suite-Installer"
-        installCommand="/Contents/MacOS/Trapcode Suite Installer"
-        installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "VFX" ]]; then
-        echo "Selection ........: VFX" | tee -a $LOG
-        downloader="com.redgiant.vfx-installer"
-        bundleID="com.redgiant.VFX-Suite-Installer"
-        installCommand="/Contents/MacOS/VFX Suite Installer"
-        installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "PluralEyes" ]]; then
-        echo "Selection ........: PluralEyes" | tee -a $LOG
-        downloader="com.redgiant.pluraleyes-installer"
-        bundleID="com.redgiant.pluraleyes-Installer"
-        installCommand="/Contents/MacOS/PluralEyes Installer"
-        installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "Universe" ]]; then
-        echo "Selection ........: Universe" | tee -a $LOG
-        downloader="com.redgiant.universe-installer"
-        bundleID="net.maxon.universe.installer"
-        installCommand="/Contents/MacOS/installbuilder.sh"
-        installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "Cinema 4D" ]]; then
+	if [[ $selection == "Cinema 4D" ]]; then
         echo "Selection ........: Cinema 4D" | tee -a $LOG
         downloader="net.maxon.cinema4d-installer"
         bundleID="net.maxon.cinema4d.installer"
         installCommand="/Contents/MacOS/installbuilder.sh"
         installArguments="--mode unattended --unattendedmodeui none"
-	elif [[ $selection == "zBrush" ]]; then
-        echo "Selection ........: zBrush" | tee -a $LOG       
-        downloader="net.maxon.zbrush-installer"
-        bundleID="net.maxon.appinstaller"
+	elif [[ $selection == "Red Giant" ]]; then
+        echo "Selection ........: Red Giant" | tee -a $LOG       
+        downloader="net.maxon.redgiant-installer"
+        bundleID="net.maxon.redgiant.installer"
         installCommand="/Contents/MacOS/installbuilder.sh"
         installArguments="--mode unattended --unattendedmodeui none"
 	elif [[ $selection == "RedShift" ]]; then
         echo "Selection ........: RedShift" | tee -a $LOG
         downloader="com.redshift3d.redshift-installer"
         bundleID="Redshift PKG. No BundleID"
+	elif [[ $selection == "zBrush" ]]; then
+        echo "Selection ........: zBrush" | tee -a $LOG       
+        downloader="net.maxon.zbrush-installer"
+        bundleID="net.maxon.appinstaller"
+        installCommand="/Contents/MacOS/installbuilder.sh"
+        installArguments="--mode unattended --unattendedmodeui none"
     else
         selection=""
 	fi   	
@@ -167,29 +154,21 @@ appSettings() {
 selectAppOSA() {
     arrayString=$(IFS=, ; echo "${appArray[*]}")
     # Build the AppleScript command as a string
-    osaCommand="choose from list {\"${arrayString//,/\",\"}\"} with title \"MAXON Installer\" with prompt \"Make a selection:\""
+    osaCommand="choose from list {\"${arrayString//,/\",\"}\"} with title \"One Jamf | MAXON Installer\" with prompt \"Make a selection:\""
     selection=$( /usr/bin/osascript -e "$osaCommand" )
 
     if [[ $selection == "false" ]]; then
         echo "ERROR: Cancelled making a selection" | tee -a $LOG
-        "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "MAXON Installer" -message "Cancelled: Make a selection"
+        "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "One Jamf | MAXON Installer" -message "Cancelled: Make a selection"
         exitERROR
-    elif [[ $selection == "Magic Bullet" ]]; then
-        echo "Selection OSA.....: Magic Bullet" | tee -a $LOG
-    elif [[ $selection == "Trapcode" ]]; then
-        echo "Selection OSA.....: Trapcode" | tee -a $LOG
-    elif [[ $selection == "VFX" ]]; then
-        echo "Selection OSA.....: VFX" | tee -a $LOG
-    elif [[ $selection == "PluralEyes" ]]; then
-        echo "Selection OSA.....: PluralEyes" | tee -a $LOG
-    elif [[ $selection == "Universe" ]]; then
-        echo "Selection OSA.....: Universe" | tee -a $LOG
     elif [[ $selection == "Cinema 4D" ]]; then
         echo "Selection OSA.....: Cinema 4D" | tee -a $LOG
     elif [[ $selection == "zBrush" ]]; then
         echo "Selection OSA.....: zBrush" | tee -a $LOG
     elif [[ $selection == "RedShift" ]]; then
         echo "Selection OSA.....: RedShift" | tee -a $LOG
+    elif [[ $selection == "Red Giant" ]]; then
+        echo "Selection OSA.....: Red Giant" | tee -a $LOG
     fi
 appSettings
 }
@@ -201,21 +180,6 @@ selectAppCLI() {
     PS3="Enter the number for your choice: "
     select selection in "${appArray[@]}"; do
         case $selection in
-            "Magic Bullet")
-                echo "Selection CLI.....: Magic Bullet" | tee -a $LOG
-                break  ;;
-            "Trapcode")
-                echo "Selection CLI.....: Trapcode" | tee -a $LOG
-                break  ;;
-            "VFX")
-                echo "Selection CLI.....: VFX" | tee -a $LOG
-                break  ;;
-            "PluralEyes")
-                echo "Selection CLI.....: PluralEyes" | tee -a $LOG
-                break  ;;
-            "Universe")
-                echo "Selection CLI.....: Universe" | tee -a $LOG
-                break  ;;
             "Cinema 4D")
                 echo "Selection CLI.....: Cinema 4D" | tee -a $LOG
                 break  ;;
@@ -225,13 +189,17 @@ selectAppCLI() {
             "RedShift")
                 echo "Selection CLI.....: RedShift" | tee -a $LOG
                 break  ;;
+            "Red Giant")
+                echo "Selection CLI.....: Red Giant" | tee -a $LOG
+                break  ;;
             *) echo "Invalid option $REPLY";;  
         esac
     done
     appSettings
 }
 
-# Needs to run sudo as user
+
+# Needs to run sudo as user, Delinea could cause issues 
 download() {
     mx1cli package download $downloader | tee -a $LOG
     sleep 3
@@ -243,6 +211,7 @@ download() {
         chown -R $currentUser $DLfolder
     fi
 }
+
 
 installDMG() {
     echo "Mounting DMG .....: $file" | tee -a $LOG
@@ -262,7 +231,7 @@ installDMG() {
                 sudo env bash -c "\"$install_executable\" $installArguments" > /dev/null 2>&1
                 hdiutil unmount "$volume_path"
             fi
-            "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "MAXON Installer" -message "INSTALLED: $bundle_name $bundle_version"
+            "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "One Jamf | MAXON Installer" -message "INSTALLED: $bundle_name $bundle_version"
         done
 
     if [[ ! $app_found ]]; then
@@ -275,6 +244,7 @@ installDMG() {
         exitError
     fi
 }
+
 
 installZIP() {
     echo "Location .........: "$DLfolder/$downloader"" | tee -a $LOG
@@ -291,7 +261,7 @@ installZIP() {
             install_executable="$app/$installCommand"
             sudo env bash -c "\"$install_executable\" $installArguments" > /dev/null 2>&1
         fi
-    "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "MAXON Installer" -message "INSTALLED: $bundle_name $bundle_version"
+    "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "One Jamf | MAXON Installer" -message "INSTALLED: $bundle_name $bundle_version"
     done
     if [[ ! $app_found ]]; then
         echo "ERROR: No matching installer found." | tee -a $LOG
@@ -299,11 +269,12 @@ installZIP() {
     fi
 }
 
+
 installPKG() {
     echo "Found ............: $file" | tee -a $LOG
     echo "Installing .......: $bundleID" | tee -a $LOG
     sudo installer -pkg "$file" -target /
-    "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "MAXON Installer" -message "INSTALLED: $file"
+    "/Library/Application Support/JAMF/bin/Management Action.app/Contents/MacOS/Management Action" -title "One Jamf | MAXON Installer" -message "INSTALLED: $file"
 }
 
 install() {
@@ -348,8 +319,6 @@ clearDownloads
 # If app not selected in Jamf policy run CLI or OSA to chose an app
 if [[ $selection ]]; then 
     echo "Selection: $selection"
-    download
-    install
 else
     if [[ "$appSelect" == "CLI" ]]; then
         selectAppCLI
@@ -359,9 +328,10 @@ else
         echo "ERROR: No way of choosing what to install" | tee -a $LOG
         exitError
     fi
-    download
-    install
 fi
+
+download
+install
 
 exitSuccess
 
